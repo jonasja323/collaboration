@@ -1,0 +1,123 @@
+#include <iostream>
+#include <string>
+#include <fstream>
+
+using namespace std;
+
+int find_str(string sub, string s);
+bool match(string sentence, bool all);
+char lower(char c);
+string replace(string s);
+
+int main() {
+    ifstream sentences("sentences");
+    if (!sentences.good()) {
+        cerr << "Could not open file sentences" << endl;
+        return 1;
+    }
+
+    ofstream omatch("match");
+    ofstream oreplace("replace");
+    ofstream oallwords("allwords");
+
+    int matches = 0;
+    int longest = 0;
+    int secondlongest = 0;
+    int allmatches = 0;
+
+    string s;
+    while (sentences >> s) {
+        string sentence = "";
+        sentence += s;
+        int words = 1;
+        while (sentence.back() != '.') {
+            sentences >> s;
+            sentence += " " + s;
+            words++;
+        }
+
+        if (match(sentence, false)) {
+            omatch << sentence << endl;
+            matches++;
+
+            if (words >= longest) {
+                secondlongest = longest;
+                longest = words;
+            } else if (words > secondlongest) {
+                secondlongest = words;
+            }
+        }
+
+        string replacement = replace(sentence);
+        oreplace << replacement << endl;
+
+        if (match(sentence, true)) {
+            oallwords << sentence << endl;
+            allmatches++;
+        }
+    }
+
+    cout << matches << " sentences that match the first word saved in file match." << endl;
+    cout << "The longest sentence matching the first word has " << longest << " words, and "
+         << "the 2nd longest has " << secondlongest << " words." << endl;
+    cout << allmatches << " sentences that match every word saved in file allwords." << endl;
+}
+
+char lower(char c) {
+    if (c >= 'A' && c <= 'Z')
+        return c - 'A' + 'a';
+    return c;
+}
+
+int find_str(string sub, string s) {
+    for (size_t i = 0; i < s.size() - sub.size(); i++) {
+        bool found_match = true;
+        for (size_t j = 0; j < sub.size(); j++) {
+            if (lower(s[i + j]) != lower(sub[j])) {
+                found_match = false;
+                break;
+            }
+        }
+        if (found_match) return i;
+    }
+    return -1;
+}
+
+bool match(string sentence, bool all) {
+    ifstream match("words");
+    if (!match.good()) {
+        cerr << "Could not open file words" << endl;
+        return false;
+    }
+    string search;
+    while (match >> search) {
+        if (!all) {
+            return find_str(search, sentence) != -1;
+        }
+        if (find_str(search, sentence) == -1) return false;
+    }
+    match.close();
+    return true;
+}
+
+string replace(string s) {
+    ifstream replace("words");
+    if (!replace.good()) {
+        cerr << "Could not open file words" << endl;
+        return "";
+    }
+    string search, replacewith;
+    if (!(replace >> search >> replacewith)) {
+        cerr << "Words did not contain at least two words" << endl;
+        return "";
+    }
+    int idx = find_str(search, s);
+    while (idx != -1) {
+        for (size_t i = 0; i < replacewith.size(); i++) {
+            s[idx + i] = replacewith[i];
+        }
+        idx = find_str(search, s);
+    }
+    replace.close();
+    return s;
+}
